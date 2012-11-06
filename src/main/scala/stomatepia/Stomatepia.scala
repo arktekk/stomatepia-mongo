@@ -1,16 +1,46 @@
 package stomatepia
 
 object Fields {
-  def drop(i:Int, t:(Vector[String], Bson)) =
-    (t._1.drop(i), t._2)
   def path(t:(Vector[String], Bson)) =
     (t._1.mkString("."), t._2)
-  def document(t:(Vector[String], Bson)) = t match {
-    case (Seq(), doc:BDocument) => doc
-    case _ => BDocument(Seq(path(t)))
-  }
 
-  def asArray[X](x:X) = x.asInstanceOf[X with IsArray]
+  def path(from:Vector[String], t:(Vector[String], Bson)):(String, Bson) =
+    path((t._1.drop(from.size), t._2))
+
+  def asArray[X](x:X) =
+    x.asInstanceOf[X with IsArray]
+}
+
+object Ops {
+  implicit def unwrap[A](ops:Ops[A, _]):A = ops.a
+}
+
+class Ops[X, A : ToBson](val a:X, route:Vector[String]){
+  private def operator[O : ToBson](op:String, value:O) = (route :+ op, ToBson(value))
+
+  def === (value:A)                                     = (route, ToBson(value))
+  def < (value:A)                                       = $lt(value)
+  def $lt(value:A)                                      = operator("$lt", value)
+  def <= (value:A)                                      = $lte(value)
+  def $lte(value:A)                                     = operator("$lte", value)
+  def > (value:A)                                       = $gt(value)
+  def $gt(value:A)                                      = operator("$gt", value)
+  def >= (value:A)                                      = $gte(value)
+  def $gte(value:A)                                     = operator("$gte", value)
+  def $all(values:Seq[A])(implicit ev:X <:< IsArray)    = operator("$all", values)
+  def $exists(exists:Boolean)                           = operator("$exists", exists)
+  def $mod(mod:Int, rest:Int)                           = operator("$mod", Seq(mod, rest))
+  def $ne(value:A)                                      = operator("$ne", value)
+  def $in(values:Seq[A])                                = operator("$in", values)
+  def $nin(values:Seq[A])                               = operator("$nin", values)
+  def $size(size:Int)(implicit ev:X <:< IsArray)        = operator("$size", size)
+  def $type(tpe:Int)                                    = operator("$type", tpe)
+  def $not(sub:(this.type => (Vector[String], Bson))*)  = operator("$not", BDocument(sub.map(f => Fields.path(route, f(this)))))
+  def $regex(regex:String)(implicit ev:A =:= String)    = operator("$regex", regex.replaceAll("\\\\", "\\\\\\\\"))
+  def $options(options:String)(implicit ev:A =:= String)= operator("$options", options)
+
+  def $elemMatch(sub:(this.type => (Vector[String], Bson))*)(implicit ev:X <:< IsArray) =
+    (route :+ "$elemMatch", BDocument(sub.map(f => Fields.path(route, f(this)))))
 }
 
 trait Fields { self =>
@@ -29,42 +59,23 @@ trait Fields { self =>
     def this(name:String)(implicit toBson:ToBson[A]) = this(route, name)
 
     protected def next(name:String) = new Primitive[A](name)
-    private def route = parent :+ name
+    private val route               = parent :+ name
+    private val ops                 = new Ops[this.type, A](this, route)
 
-    private def operator(op:String, value:A) =
-      apply(_ => new Primitive[A](route, op).apply(value))
-
-    def apply(value:A)          = (route, ToBson(value))
+    def apply(value:A)                                         = (route, ToBson(value))
     def apply(value:Seq[A])(implicit ev:this.type <:< IsArray) = (route, BArray(value.map(ToBson(_))))
-    def === (value:A)           = (route, ToBson(value))
-    def < (value:A)             = $lt(value)
-    def $lt(value:A)            = operator("$lt", value)
-    def <= (value:A)            = $lte(value)
-    def $lte(value:A)           = (route, BDocument(Seq("$lte" -> ToBson(value))))
-    def > (value:A)             = $gt(value)
-    def $gt(value:A)            = (route, BDocument(Seq("$gt" -> ToBson(value))))
-    def >= (value:A)            = $gte(value)
-    def $gte(value:A)           = (route, BDocument(Seq("$gte" -> ToBson(value))))
-    def $all(values:Seq[A])(implicit ev:this.type <:< IsArray) = (route, BDocument(Seq("$all" -> BArray(values.map(ToBson(_))))))
-    def $exists(exists:Boolean) = (route, BDocument(Seq("$exists" -> BBoolean(exists))))
-    def $mod(mod:Int, rest:Int) = (route, BDocument(Seq("$mod" -> BArray(Seq(BInt(mod), BInt(rest))))))
-    def $ne(value:A)            = (route, BDocument(Seq("$ne" -> ToBson(value))))
-    def $in(values:Seq[A])      = (route, BDocument(Seq("$in" -> BArray(values.map(ToBson(_))))))
-    def $nin(values:Seq[A])     = apply(_ => Fields.asArray(new Primitive[A](route, "$nin")).apply(values))//(route, BDocument(Seq("$nin" -> BArray(values.map(ToBson(_))))))
-    def $size(size:Int)(implicit ev:this.type <:< IsArray) = (route, BDocument(Seq("$size" -> BInt(size))))
-    def $type(tpe:Int)          = (route, BDocument(Seq("$type" -> BInt(tpe))))
-    def $not(sub:(this.type => (Vector[String], Bson))*) = (route, BDocument(Seq("$not" -> BDocument(sub.map(f => Fields.path(Fields.drop(route.size, f(this))))))))
-    def $regex(regex:String)(implicit ev:A =:= String)    = (Vector(name, "$regex"), BString(regex.replaceAll("\\\\", "\\\\\\\\")))
-    def $options(options:String)(implicit ev:A =:= String)= (Vector(name, "$options"), BString(options))
+    def apply(sub:(Ops[this.type, A] => (Vector[String], Bson))*) =
+      (parent :+ name, BDocument(sub.map(f => Fields.path(parent :+ name, f(ops)))))
   }
 
-  abstract class Field[A <: Field[A]](parent:Vector[String], name:String) {
+  abstract class Field[A <: Field[A]](val parent:Vector[String], name:String) {
     protected def next(name:String):A
     def $(implicit ev:this.type <:< IsArray) = next(name + ".$")
+    // TODO conflict with field[Int].apply(Int) ?
     def apply(index:Int)(implicit ev:this.type <:< IsArray) = next(name + "." + index)
-    def apply(sub:(this.type => (Vector[String], Bson))*) = (parent :+ name, sub.foldLeft(BDocument(Seq())){ (a,b) => a ++ Fields.document(Fields.drop(route.size + 1, b(this)))})//.map(f => Fields.document(Fields.drop(route.size + 1, f(this))))))
-    def $elemMatch(sub:(this.type => (Vector[String], Bson))*)(implicit ev:this.type <:< IsArray) = (route :+ name, BDocument(Seq("$elemMatch" -> BDocument(sub.map(f => Fields.path(Fields.drop(1, f(this))))))))
 
+    def $elemMatch(sub:(this.type => (Vector[String], Bson))*)(implicit ev:this.type <:< IsArray) =
+      (parent :+ name :+ "$elemMatch", BDocument(sub.map(f => Fields.path(parent :+ name, f(this)))))
   }
 
   abstract class Embedded[X <: Embedded[X]](name:String) extends Field[X](route, name) with Fields {
@@ -72,6 +83,9 @@ trait Fields { self =>
     protected def next(name:String) = copy(name)
 
     def route = self.route :+ name
+
+    def apply(sub:(this.type => (Vector[String], Bson))*) =
+      (parent :+ name, BDocument(sub.map(f => Fields.path(parent :+ name, f(this)))))
   }
 }
 
