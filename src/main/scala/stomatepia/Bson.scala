@@ -14,10 +14,17 @@ case class BArray(value:Seq[Bson]) extends Bson {
   override def toString = value.mkString("[ ", ", ", " ]")
 }
 case class BDocument(value:Seq[(String, Bson)]) extends Bson {
-  override def toString = value.map{ case (k, v) => "\""+k+"\"" + " : " + v }.mkString("{ ", ", ", " }")
+  override def toString = if(value.isEmpty) "{}" else value.map{ case (k, v) => "\""+k+"\"" + " : " + v }.mkString("{ ", ", ", " }")
   def ++ (other:BDocument) = BDocument(value ++ other.value) // TODO merge semantics
 }
+case class BRegex(regex:String, options:String) extends Bson {
+  override def toString = "/"+regex+"/" + options
+}
+
 case class BBoolean(value:Boolean) extends Bson {
+  override def toString = value.toString
+}
+case class BDouble(value:Double) extends Bson {
   override def toString = value.toString
 }
 
@@ -40,11 +47,23 @@ object ToBson {
     def toBson(value: Int) = BInt(value)
   }
 
+  implicit val double = new ToBson[Double] {
+    def toBson(value: Double) = BDouble(value)
+  }
+
   implicit val string = new ToBson[String] {
     def toBson(value: String) = BString(value)
   }
 
   implicit def seq[A : ToBson] = new ToBson[Seq[A]] {
     def toBson(value: Seq[A]) = BArray(value.map(ToBson(_)))
+  }
+
+  implicit def tuple2[A : ToBson, B : ToBson] = new ToBson[(A, B)] {
+    def toBson(value: (A, B)) = BArray(Seq(ToBson(value._1), ToBson(value._2)))
+  }
+
+  implicit def tuple4[A : ToBson, B : ToBson, C : ToBson, D : ToBson] = new ToBson[(A, B, C, D)] {
+    def toBson(value: (A, B, C, D)) = BArray(Seq(ToBson(value._1), ToBson(value._2), ToBson(value._3), ToBson(value._4)))
   }
 }

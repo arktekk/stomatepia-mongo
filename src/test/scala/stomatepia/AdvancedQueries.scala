@@ -1,12 +1,6 @@
 package stomatepia
 
-import org.scalatest.FunSuite
-
-class AdvancedQueries extends FunSuite {
-
-  implicit def isCursor(c:Cursor) = new {
-    def is(s:String) = test(s){ assert(c.toString === s) }
-  }
+class AdvancedQueries extends StomatepiaSuite {
 
   object Thing extends Stomatepia {
     val x = int("x")
@@ -133,14 +127,11 @@ class AdvancedQueries extends FunSuite {
     db.things.find(_.j(_.$nin(Seq(2, 4, 6)))) is """db.things.find({ "j" : { "$nin" : [ 2, 4, 6 ] } })"""
 //  }
 
-  test("$nor"){
-    pending
-  }
 
 //  test("$or"){
-    db.foo.find(_.$or(_.a(1), _.b(2)))                   is """db.foo.find({ "$or" : { "a" : 1, "b" : 2 } })"""
+    db.foo.find(_.$or(_.a(1), _.b(2)))                   is """db.foo.find({ "$or" : [ { "a" : 1 }, { "b" : 2 } ] })"""
 
-    db.foo.find(_.name("bob"), _.$or(_.a(1), _.b(2))) is """db.foo.find({ "name" : 'bob', "$or" : { "a" : 1, "b" : 2 } })"""
+    db.foo.find(_.name("bob"), _.$or(_.a(1), _.b(2))) is """db.foo.find({ "name" : 'bob', "$or" : [ { "a" : 1 }, { "b" : 2 } ] })"""
 //  }
 
 //  test("$and"){

@@ -1,12 +1,6 @@
 package stomatepia
 
-import org.scalatest.FunSuite
-
-class DotNotation extends FunSuite {
-
-  implicit def isCursor(c:Cursor) = new {
-    def is(s:String) = test(s){ assert(c.toString === s) }
-  }
+class DotNotation extends StomatepiaSuite {
 
   object Foo extends Stomatepia {
     case class Foo(name:String) extends Embedded[Foo](name){
@@ -60,9 +54,9 @@ class DotNotation extends FunSuite {
 
     db.blogposts.find(_.comments.by("Ada")) is """db.blogposts.find({ "comments.by" : 'Ada' })"""
 
-    db.persons.ensureIndex(_.address.state)
+//    db.persons.ensureIndex(_.address.state)
 
-    db.blogposts.ensureIndex(_.comments.by)
+//    db.blogposts.ensureIndex(_.comments.by)
 //  }
 
 //  test("dot notation vs subobjects"){
