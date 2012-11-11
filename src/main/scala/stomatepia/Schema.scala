@@ -195,7 +195,7 @@ trait Collections { self: Fields =>
 
 trait IsArray
 
-trait Stomatepia extends Fields with Collections {
+trait Schema extends Fields with Collections {
   def __route = Vector.empty[String]
   def array[X](value:X) = Fields.array(value)
 }

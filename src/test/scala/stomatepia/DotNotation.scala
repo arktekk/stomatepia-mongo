@@ -2,7 +2,7 @@ package stomatepia
 
 class DotNotation extends StomatepiaSuite {
 
-  object Foo extends Stomatepia {
+  object Foo extends Schema {
     case class Foo(name:String) extends Embedded[Foo](name){
       val shape = string("shape")
       val color = string("color")
@@ -11,7 +11,7 @@ class DotNotation extends StomatepiaSuite {
     val foo = array(Foo("foo"))
   }
 
-  object Person extends Stomatepia {
+  object Person extends Schema {
     val name = string("name")
     val address = Address("address")
     val likes = array(string("likes"))
@@ -22,7 +22,7 @@ class DotNotation extends StomatepiaSuite {
     }
   }
 
-  object Blogpost extends Stomatepia {
+  object Blogpost extends Schema {
     val title = string("title")
     val author = Author("author")
     val comments = array(Comments("comments"))

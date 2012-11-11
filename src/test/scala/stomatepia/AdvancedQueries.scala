@@ -2,7 +2,7 @@ package stomatepia
 
 class AdvancedQueries extends StomatepiaSuite {
 
-  object Thing extends Stomatepia {
+  object Thing extends Schema {
     val x = int("x")
     val y = string("y")
     val j = int("j")
@@ -11,25 +11,25 @@ class AdvancedQueries extends StomatepiaSuite {
     val colors = array(string("colors"))
   }
 
-  object Collection extends Stomatepia {
+  object Collection extends Schema {
     val field = int("field")
   }
 
-  object Foo extends Stomatepia {
+  object Foo extends Schema {
     val a = array(int("a"))
     val b = int("b")
     val name = string("name")
   }
 
-  object Customer extends Stomatepia {
+  object Customer extends Schema {
     val name = string("name")
   }
 
-  object X extends Stomatepia {
+  object X extends Schema {
     val someId = string("someId")
   }
 
-  object T extends Stomatepia {
+  object T extends Schema {
     val x = array(X("x"))
     val x2 = array(int("x"))
 
@@ -39,7 +39,7 @@ class AdvancedQueries extends StomatepiaSuite {
     }
   }
 
-  object Posting extends Stomatepia {
+  object Posting extends Schema {
     val author = Author("author")
 
     case class Author(_name:String) extends Embedded[Author](_name){
@@ -47,7 +47,7 @@ class AdvancedQueries extends StomatepiaSuite {
     }
   }
 
-  object MyCollection extends Stomatepia {
+  object MyCollection extends Schema {
     val a = int("a")
     val registered = boolean("registered")
   }

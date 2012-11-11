@@ -2,7 +2,7 @@ package stomatepia
 
 class OperatorReference extends StomatepiaSuite {
 
-  object Inventory extends Stomatepia {
+  object Inventory extends Schema {
     val qty     = int("qty")
     val carrier = Carrier("carrier")
     val price   = double("price")
@@ -16,7 +16,7 @@ class OperatorReference extends StomatepiaSuite {
     }
   }
 
-  object Collection extends Stomatepia {
+  object Collection extends Schema {
     val field    = array(string("field"))
     val field1   = array(string("field1"))
     val location = geolocation("location")
@@ -31,7 +31,7 @@ class OperatorReference extends StomatepiaSuite {
     }
   }
 
-  object Addressbook extends Stomatepia {
+  object Addressbook extends Schema {
     val addresses = Addresses("addresses")
     val address   = Addresses("address")
 
@@ -40,7 +40,7 @@ class OperatorReference extends StomatepiaSuite {
     }
   }
 
-  object Student extends Stomatepia {
+  object Student extends Schema {
     val _id      = int("_id")
     val nickname = string("nickname")
     val alias    = string("alias")
@@ -57,7 +57,7 @@ class OperatorReference extends StomatepiaSuite {
     val grades   = array(int("grades"))
   }
 
-  object Student2 extends Stomatepia {
+  object Student2 extends Schema {
     val _id = int("_id")
     val name = Name("name")
     val contact = Contact("contact")
@@ -79,7 +79,7 @@ class OperatorReference extends StomatepiaSuite {
     }
   }
 
-  object Post extends Stomatepia {
+  object Post extends Schema {
     val comments = array(string("comments"))
   }
 
