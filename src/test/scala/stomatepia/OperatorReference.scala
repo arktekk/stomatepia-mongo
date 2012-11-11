@@ -1,7 +1,5 @@
 package stomatepia
 
-import org.omg.CORBA._IDLTypeStub
-
 class OperatorReference extends StomatepiaSuite {
 
   object Inventory extends Stomatepia {
@@ -64,14 +62,17 @@ class OperatorReference extends StomatepiaSuite {
     val name = Name("name")
     val contact = Contact("contact")
     val grades = array(Grade("grades"))
+
     case class Name(name:String) extends Embedded[Name](name){
       val first = string("first")
       val fname = string("fname")
       val last  = string("last")
     }
+
     case class Contact(name:String) extends Embedded[Contact](name){
       val lname = string("lname")
     }
+
     case class Grade(name:String) extends Embedded[Grade](name){
       val grade = int("grade")
       val std   = int("std")
@@ -154,7 +155,7 @@ class OperatorReference extends StomatepiaSuite {
 
   db.inventory.ensureIndex(_.sale(1)) // TODO test
 
-//  db.inventory.find ( { $or: [ { price: 1.99 }, { sale: true } ] } ).sort({item:1})
+  db.inventory.find(_.$or(_.price(1.99), _.sale(true))).sort(_.item(1))
 
   //$nor
   db.inventory.find(_.$nor(_.price(1.99), _.qty(_.$lt(20)), _.sale(true))) is """db.inventory.find({ "$nor" : [ { "price" : 1.99 }, { "qty" : { "$lt" : 20 } }, { "sale" : true } ] })"""

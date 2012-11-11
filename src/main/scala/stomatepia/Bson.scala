@@ -1,10 +1,8 @@
 package stomatepia
 
-object Bson {
-  implicit def pairIsDocument(p:(String, Bson)) = BDocument(Seq(p))
-}
 sealed trait Bson
-case class BInt(value:Int) extends Bson{
+
+case class BInt(value:Int) extends Bson {
   override def toString = value.toString
 }
 case class BString(value:String) extends Bson {
@@ -15,7 +13,6 @@ case class BArray(value:Seq[Bson]) extends Bson {
 }
 case class BDocument(value:Seq[(String, Bson)]) extends Bson {
   override def toString = if(value.isEmpty) "{}" else value.map{ case (k, v) => "\""+k+"\"" + " : " + v }.mkString("{ ", ", ", " }")
-  def ++ (other:BDocument) = BDocument(value ++ other.value) // TODO merge semantics
 }
 case class BRegex(regex:String, options:String) extends Bson {
   override def toString = "/"+regex+"/" + options

@@ -1,11 +1,5 @@
 package stomatepia
 
-/** TODO
- * UpdateOps
- *
- * caste 'Fields' til Query/Update/etc. fields, og pimp på operators avhengig av bruksområde istedenfor ops ?
- */
-
 object Fields {
   def name(field:Fields#Field[_]) = field.__route.mkString(".")
 
@@ -15,7 +9,7 @@ object Fields {
   def path(from:Vector[String], t:(Vector[String], Bson)):(String, Bson) =
     path((t._1.drop(from.size), t._2))
 
-  def asArray[X](x:X) =
+  def array[X](x:X) =
     x.asInstanceOf[X with IsArray]
 
   def bsonDocument[A](from:Vector[String], name:String, what:A, fields:Seq[A => (Vector[String], Bson)]) =
@@ -77,7 +71,7 @@ class Ops[X, A : ToBson](val underlying:X, route:Vector[String]){
   //update
   def $each(values:Seq[A]) = operator("$each", values)
 
-  //find 2. param
+  //find subset
   def $slice(slice:Int) = operator("$slice", slice)
   def $slice(skip:Int, limit:Int) = operator("$slice", (skip, limit))
 }
@@ -93,7 +87,7 @@ trait Fields { self =>
 
   def __route:Vector[String]
 
-  type ARG = self.type => (Vector[String], Bson)
+  private type ARG = self.type => (Vector[String], Bson)
 
   def int(name:String)         = new Primitive[Int](name)
   def double(name:String)      = new Primitive[Double](name)
@@ -148,6 +142,14 @@ trait Fields { self =>
     def $(value:A)(implicit ev:this.type <:< IsArray) = super.$.apply(value)
   }
 
+  abstract class Embedded[X <: Embedded[X]](name:String) extends Field[X](__route, name) with Fields {
+    embedded: { def copy(name:String):X } =>
+    protected def next(name:String) = copy(name)
+
+    def apply(sub:(this.type => (Vector[String], Bson))*) =
+      (__route, BDocument(sub.map(f => Fields.path(__route, f(this)))))
+  }
+
   sealed abstract class Field[A <: Field[A]](val parent:Vector[String], name:String) {
     protected def next(name:String):A
     def __route = parent :+ name
@@ -162,41 +164,48 @@ trait Fields { self =>
     def $slice(slice:Int) = (__route :+ "$slice", ToBson(slice))
     def $slice(skip:Int, limit:Int) = (__route :+ "$slice", ToBson((skip, limit)))
   }
-
-  abstract class Embedded[X <: Embedded[X]](name:String) extends Field[X](__route, name) with Fields {
-    embedded: { def copy(name:String):X } =>
-    protected def next(name:String) = copy(name)
-
-    def apply(sub:(this.type => (Vector[String], Bson))*) =
-      (__route, BDocument(sub.map(f => Fields.path(__route, f(this)))))
-  }
 }
 
-trait Collections { self: Fields with Base =>
+trait Collections { self: Fields =>
   case class Collection(name:String) {
-    def find(fields:(self.type => (Vector[String], Bson))*) = Find[self.type](self, name, BDocument(fields.map(f => Fields.path(f(self)))))
-    def find(js:String) = Find[self.type](self, name, BString(js))
-    def findOne(fields:(self.type => (Vector[String], Bson))*) = FindOne(name, BDocument(fields.map(f => Fields.path(f(self)))))
+
+    def find(fields:(self.type => (Vector[String], Bson))*) =
+      Find[self.type](self, name, BDocument(fields.map(f => Fields.path(f(self)))))
+
+    def find(js:String) =
+      Find[self.type](self, name, BString(js))
+
+    def findOne(fields:(self.type => (Vector[String], Bson))*) =
+      FindOne(name, BDocument(fields.map(f => Fields.path(f(self)))))
+
     def insert(a:(self.type => (Vector[String], Bson))*){}
-    def update(q:(self.type => (Vector[String], Bson))*)(u:(self.type => (Vector[String], Bson))*) = Update(name, BDocument(q.map(f => Fields.path(f(self)))), BDocument(u.map(f => Fields.path(f(self)))))
+
+    def update(q:(self.type => (Vector[String], Bson))*)(u:(self.type => (Vector[String], Bson))*) =
+      Update(name, BDocument(q.map(f => Fields.path(f(self)))), BDocument(u.map(f => Fields.path(f(self)))))
+
     def remove{}
+
     def ensureIndex(on:(self.type => (Vector[String], BInt))*){}
+
     def reIndex(){}
+
     def save(value:(self.type => Any)*){}
   }
 }
 
-trait Base { self:Fields =>
-  def array[X](value:X) = Fields.asArray(value)
-}
-
 trait IsArray
 
-trait Stomatepia extends Fields with Base with Collections {
+trait Stomatepia extends Fields with Collections {
   def __route = Vector.empty[String]
+  def array[X](value:X) = Fields.array(value)
 }
 
-case class Find[A <: Fields](from:A, collection:String, query:Bson){
+trait Finder[A <: Fields] {
+  def from:A
+  def sort(by:(A => (Vector[String], Bson))*){}
+}
+
+case class Find[A <: Fields](from:A, collection:String, query:Bson) extends Finder[A] {
   override def toString = "db."+collection+".find("+ query +")"
 
   def apply(fields:(A => (Vector[String], Bson))*) = FindSubset[A](collection, query, BDocument(fields.map(f => Fields.path(f(from)))))
@@ -212,6 +221,10 @@ case class FindOne(collection:String, query:Bson){
 
 case class Update(collection:String, params:Bson*){
   override def toString = "db."+collection+".update("+params.mkString(", ")+")"
+}
+
+case class Save(collection:String, document:Bson){
+  override def toString = "db."+collection+".save("+document+")"
 }
 
 
