@@ -1,6 +1,6 @@
 package stomatepia
 
-class OperatorReference extends StomatepiaSuite {
+class OperatorReference extends StomatepiaSuite { self =>
 
   object Inventory extends Schema {
     val qty     = int("qty")
@@ -17,11 +17,11 @@ class OperatorReference extends StomatepiaSuite {
   }
 
   object Collection extends Schema {
-    val field    = array(string("field"))
-    val field1   = array(string("field1"))
+    val field    = self.array(string("field"))
+    val field1   = self.array(string("field1"))
     val location = geolocation("location")
     val loc      = geolocation("loc")
-    val _array   = array(Fields("array"))
+    val array    = self.array(Fields("array"))
     val age      = int("age")
     val name     = string("name")
 
@@ -230,7 +230,7 @@ class OperatorReference extends StomatepiaSuite {
   db.collection.find(_.field(_.$size(1))) is """db.collection.find({ "field" : { "$size" : 1 } })"""
 
   //$elemMatch
-  db.collection.find(_._array(_.$elemMatch(_.value1(1), _.value2(_.$gt(1))))) is """db.collection.find({ "array" : { "$elemMatch" : { "value1" : 1, "value2" : { "$gt" : 1 } } } })"""
+  db.collection.find(_.array(_.$elemMatch(_.value1(1), _.value2(_.$gt(1))))) is """db.collection.find({ "array" : { "$elemMatch" : { "value1" : 1, "value2" : { "$gt" : 1 } } } })"""
 
   // --- UPDATE ---
   // --- FIELDS ---
@@ -301,7 +301,7 @@ class OperatorReference extends StomatepiaSuite {
 //
   // -- PROJECTION --
   //$slice
-  db.collection.find(_.field("value"))(_._array(_.$slice(5))) is """db.collection.find({ "field" : 'value' }, { "array" : { "$slice" : 5 } })"""
+  db.collection.find(_.field("value"))(_.array(_.$slice(5))) is """db.collection.find({ "field" : 'value' }, { "array" : { "$slice" : 5 } })"""
 
   db.posts.find()(_.comments(_.$slice(5))) is """db.posts.find({}, { "comments" : { "$slice" : 5 } })"""
 
