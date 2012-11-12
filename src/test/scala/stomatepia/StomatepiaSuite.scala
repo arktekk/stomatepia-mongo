@@ -24,13 +24,13 @@ trait ToStringBson extends StomatepiaBson {
   object Bson extends BsonProvider {
     def array(elements: Seq[Bson]) = BArray(elements)
 
-    def document(fields: Seq[(String, Bson)]) = BDocument(fields)
+    def document(fields: Seq[(String, Bson)]) = BsonDocument(fields)
 
     def int(value: Int) = BInt(value)
 
     def double(value: Double) = BDouble(value)
 
-    def string(value: String) = BString(value)
+    def string(value: String) = BsonString(value)
 
     def boolean(value: Boolean) = BBoolean(value)
 
@@ -46,7 +46,7 @@ trait ToStringBson extends StomatepiaBson {
 
     def javascript(value: String) = sys.error("javascript")
 
-    def jsWithScope(value: String, scope: ToStringBson.this.type#Bson) = sys.error("jsWithScope")
+    def jsWithScope(value: String, scope: BsonDocument) = sys.error("jsWithScope")
 
     def timestamp(time: Int, inc: Int) = sys.error("timestamp")
 
@@ -62,13 +62,13 @@ trait ToStringBson extends StomatepiaBson {
   case class BInt(value:Int) extends Bson {
     override def toString = value.toString
   }
-  case class BString(value:String) extends Bson {
+  case class BsonString(value:String) extends Bson {
     override def toString = "'" + value + "'"
   }
   case class BArray(value:Seq[Bson]) extends Bson {
     override def toString = value.mkString("[ ", ", ", " ]")
   }
-  case class BDocument(value:Seq[(String, Bson)]) extends Bson {
+  case class BsonDocument(value:Seq[(String, Bson)]) extends Bson {
     override def toString = if(value.isEmpty) "{}" else value.map{ case (k, v) => "\""+k+"\"" + " : " + v }.mkString("{ ", ", ", " }")
   }
   case class BRegex(regex:String, options:String) extends Bson {

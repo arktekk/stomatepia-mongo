@@ -8,6 +8,8 @@ import org.bson.types._
 
 trait JavaBson extends StomatepiaBson {
   type Bson = Any
+  type BsonDocument = BasicDBObject
+  type BsonString = String
 
   object Bson extends BsonProvider {
     def array(elements: Seq[Bson]) = {
@@ -47,7 +49,7 @@ trait JavaBson extends StomatepiaBson {
 
     def symbol(value: scala.Symbol) = new Symbol(value.toString)
 
-    def jsWithScope(value: String, scope: Bson) = new CodeWScope(value, scope.asInstanceOf[BSONObject])
+    def jsWithScope(value: String, scope: BsonDocument) = new CodeWScope(value, scope)
 
     def timestamp(time:Int, inc:Int) = new BSONTimestamp(time, inc)
 

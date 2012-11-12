@@ -3,13 +3,15 @@ package stomatepia
 trait StomatepiaBson {
 
   type Bson
+  type BsonDocument <: Bson
+  type BsonString <: Bson
   def Bson:BsonProvider
 
   trait BsonProvider {
 
     def double(value:Double):Bson                  //1
-    def string(value:String):Bson                  //2
-    def document(fields:Seq[(String, Bson)]):Bson  //3
+    def string(value:String):BsonString                  //2
+    def document(fields:Seq[(String, Bson)]):BsonDocument  //3
     def array(elements:Seq[Bson]):Bson             //4
     def binary(data:Array[Byte]):Bson              //5
     def objectId(id:String):Bson                   //7
@@ -19,7 +21,7 @@ trait StomatepiaBson {
     def regex(value:String, options:String):Bson   //11
     def javascript(value:String):Bson              //13
     def symbol(value:Symbol):Bson                  //14
-    def jsWithScope(value:String, scope:Bson):Bson //15
+    def jsWithScope(value:String, scope:BsonDocument):Bson //15
     def int(value:Int):Bson                        //16
     def timestamp(time:Int, inc:Int):Bson          //17
     def long(value:Long):Bson                      //18

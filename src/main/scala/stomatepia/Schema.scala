@@ -179,14 +179,14 @@ trait Stomatepia extends StomatepiaBson {
     }
   }
 
-  trait Collections { self: Fields =>
+  trait Collections { self: Schema =>
     case class Collection(name:String) {
 
       def find(fields:(self.type => (Vector[String], Bson))*) =
         Find[self.type](self, name, Bson.document(fields.map(f => Fields.path(f(self)))))
 
       def find(js:String) =
-        Find[self.type](self, name, Bson.string(js))
+        FindJs[self.type](self, name, Bson.string(js))
 
       def findOne(fields:(self.type => (Vector[String], Bson))*) =
         FindOne(name, Bson.document(fields.map(f => Fields.path(f(self)))))
@@ -221,29 +221,33 @@ trait Stomatepia extends StomatepiaBson {
     def sort(by:(A => (Vector[String], Bson))*){}
   }
 
-  case class Find[A <: Fields](from:A, collection:String, query:Bson) extends Finder[A] {
+  case class Find[A <: Schema](from:A, collection:String, query:BsonDocument) extends Finder[A] {
     override def toString = "db."+collection+".find("+ query +")"
 
     def apply(fields:(A => (Vector[String], Bson))*) = FindSubset[A](collection, query, Bson.document(fields.map(f => Fields.path(f(from)))))
   }
 
-  case class FindSubset[A <: Fields](collection:String, query:Bson, subset:Bson){
+  case class FindJs[A <: Schema](from:A, collection:String, query:BsonString) extends Finder[A] {
+    override def toString = "db."+collection+".find("+query+")"
+  }
+
+  case class FindSubset[A <: Fields](collection:String, query:BsonDocument, subset:BsonDocument){
     override def toString = "db."+collection+".find("+query+", "+subset+")"
   }
 
-  case class FindOne(collection:String, query:Bson){
+  case class FindOne(collection:String, query:BsonDocument){
     override def toString = "db."+collection+".findOne("+query+")"
   }
 
-  case class Update(collection:String, params:Bson*){
-    override def toString = "db."+collection+".update("+params.mkString(", ")+")"
+  case class Update(collection:String, query:BsonDocument, update:BsonDocument){
+    override def toString = "db."+collection+".update("+query+", "+update+")"
   }
 
-  case class Save(collection:String, document:Bson){
+  case class Save(collection:String, document:BsonDocument){
     override def toString = "db."+collection+".save("+document+")"
   }
 
-  case class EnsureIndex(collection:String, fields:Bson){
+  case class EnsureIndex(collection:String, fields:BsonDocument){
     override def toString = "db."+collection+".ensureIndex("+fields+")"
   }
 }
