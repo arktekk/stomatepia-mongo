@@ -97,16 +97,19 @@ trait Stomatepia extends StomatepiaBson {
     def __route:Vector[String]
   }
 
-  trait Fields extends Route{ self =>
+  trait Fields extends Route { self =>
 
     private type ARG = self.type => (Vector[String], Bson)
 
-    def int(name:String)         = new Primitive[Int](name)
-    def double(name:String)      = new Primitive[Double](name)
-    def long(name:String)        = new Primitive[Long](name)
-    def string(name:String)      = new Primitive[String](name)
-    def boolean(name:String)     = new Primitive[Boolean](name)
-    def geolocation(name:String) = new Primitive[(Int, Int)](name)
+    def bson[A : ToBson](name:String) = new Primitive[A](name)
+
+    def int(name:String)         = bson[Int](name)
+    def double(name:String)      = bson[Double](name)
+    def long(name:String)        = bson[Long](name)
+    def string(name:String)      = bson[String](name)
+    def boolean(name:String)     = bson[Boolean](name)
+    def geolocation(name:String) = bson[(Int, Int)](name)
+    def date(name:String)        = bson[java.util.Date](name)
 
     // query
     def $or(or:ARG*) =
@@ -163,7 +166,7 @@ trait Stomatepia extends StomatepiaBson {
         (__route, Bson.document(sub.map(f => Fields.path(__route, f(this)))))
     }
 
-    sealed abstract class Field[A <: Field[A]](parent:Vector[String], name:String) extends Route{
+    sealed abstract class Field[A <: Field[A]](parent:Vector[String], name:String) extends Route {
       protected def next(name:String):A
       def __route = parent :+ name
 

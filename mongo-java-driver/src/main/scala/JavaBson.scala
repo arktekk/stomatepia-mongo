@@ -1,15 +1,17 @@
 package stomatepia
 
 import com.mongodb.{BasicDBObject, BasicDBList}
-import org.bson.{BSONObject, BSON}
+import org.bson.{BSON}
 import java.util.regex.Pattern
 import java.util.Date
 import org.bson.types._
 
 trait JavaBson extends StomatepiaBson {
-  type Bson = Any
+
+  type Bson         = Any
   type BsonDocument = BasicDBObject
-  type BsonString = String
+  type BsonArray    = BasicDBList
+  type BsonString   = String
 
   object Bson extends BsonProvider {
     def array(elements: Seq[Bson]) = {

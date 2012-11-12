@@ -22,7 +22,7 @@ trait ToStringBson extends StomatepiaBson {
   sealed trait Bson
 
   object Bson extends BsonProvider {
-    def array(elements: Seq[Bson]) = BArray(elements)
+    def array(elements: Seq[Bson]) = BsonArray(elements)
 
     def document(fields: Seq[(String, Bson)]) = BsonDocument(fields)
 
@@ -65,7 +65,7 @@ trait ToStringBson extends StomatepiaBson {
   case class BsonString(value:String) extends Bson {
     override def toString = "'" + value + "'"
   }
-  case class BArray(value:Seq[Bson]) extends Bson {
+  case class BsonArray(value:Seq[Bson]) extends Bson {
     override def toString = value.mkString("[ ", ", ", " ]")
   }
   case class BsonDocument(value:Seq[(String, Bson)]) extends Bson {

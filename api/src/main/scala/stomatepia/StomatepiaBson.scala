@@ -4,6 +4,7 @@ trait StomatepiaBson {
 
   type Bson
   type BsonDocument <: Bson
+  type BsonArray <: Bson
   type BsonString <: Bson
   def Bson:BsonProvider
 
@@ -12,7 +13,7 @@ trait StomatepiaBson {
     def double(value:Double):Bson                  //1
     def string(value:String):BsonString                  //2
     def document(fields:Seq[(String, Bson)]):BsonDocument  //3
-    def array(elements:Seq[Bson]):Bson             //4
+    def array(elements:Seq[Bson]):BsonArray             //4
     def binary(data:Array[Byte]):Bson              //5
     def objectId(id:String):Bson                   //7
     def boolean(value:Boolean):Bson                //8
@@ -48,6 +49,7 @@ trait StomatepiaBson {
     implicit val double  = from(Bson.double)
     implicit val string  = from(Bson.string)
     implicit val symbol  = from(Bson.symbol)
+    implicit val date    = from(Bson.date)
     implicit def seq[A : ToBson] = from[Seq[A]](value => Bson.array(value.map(ToBson(_))))
     implicit def tuple2[A : ToBson, B : ToBson] = from[(A, B)]{
       case (a, b) => Bson.array(Seq(ToBson(a), ToBson(b)))
