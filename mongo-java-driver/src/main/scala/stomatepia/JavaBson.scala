@@ -1,7 +1,7 @@
 package stomatepia
 
 import com.mongodb.{BasicDBObject, BasicDBList}
-import org.bson.{BSON}
+import org.bson.BSON
 import java.util.regex.Pattern
 import java.util.Date
 import org.bson.types._

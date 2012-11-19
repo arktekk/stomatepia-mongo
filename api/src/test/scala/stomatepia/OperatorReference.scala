@@ -155,7 +155,7 @@ class OperatorReference extends StomatepiaSuite { self =>
 
   db.inventory.ensureIndex(_.sale(1)) // TODO test
 
-  db.inventory.find(_.$or(_.price(1.99), _.sale(true))).sort(_.item(1))
+  db.inventory.find(_.$or(_.price(1.99), _.sale(true))).sort(_.item(1)) is """db.inventory.find({ "$or" : [ { "price" : 1.99 }, { "sale" : true } ] }).sort({ "item" : 1 })"""
 
   //$nor
   db.inventory.find(_.$nor(_.price(1.99), _.qty(_.$lt(20)), _.sale(true))) is """db.inventory.find({ "$nor" : [ { "price" : 1.99 }, { "qty" : { "$lt" : 20 } }, { "sale" : true } ] })"""
@@ -310,5 +310,7 @@ class OperatorReference extends StomatepiaSuite { self =>
   db.posts.find()(_.comments(_.$slice(20, 10))) is """db.posts.find({}, { "comments" : { "$slice" : [ 20, 10 ] } })"""
 
   db.posts.find()(_.comments(_.$slice(-20, 10))) is """db.posts.find({}, { "comments" : { "$slice" : [ -20, 10 ] } })"""
+
+  db.posts.insertAll(Seq(_.comments(Seq("bar"))), Seq(_.comments(Seq("foo")))) is """db.posts.insert([ { "comments" : [ 'bar' ] }, { "comments" : [ 'foo' ] } ])"""
 }
 

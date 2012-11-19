@@ -22,18 +22,24 @@ trait Stomatepia extends StomatepiaBson {
     def array[X](x:X) =
       x.asInstanceOf[X with IsArray]
 
-    def bsonDocument[A <: Route](name:String, what:A, fields:Seq[A => (Vector[String], Bson)]) =
+    def bsonDocument[A <: Route, O <: Ops[A]](name:String, what:O, fields:Seq[O => (Vector[String], Bson)]) =
       (what.__route :+ name, Bson.document(fields.map(f => path(what.__route, f(what)))))
 
-    def bsonArray[A <: Route](name:String, what:A, fields:Seq[A => (Vector[String], Bson)]) =
+    def bsonArray[A <: Route, O <: Ops[A]](name:String, what:O, fields:Seq[O => (Vector[String], Bson)]) =
       (what.__route :+ name, Bson.array(fields.map(f => Bson.document(Seq(path(what.__route, f(what)))))))
   }
 
-  object Ops {
-    implicit def unwrap[A](ops:Ops[A, _]):A = ops.underlying
+  /*
+  needs to be directly available instead of in Ops companion to beat any2Ensuring and any2ArrowAssoc for values called "x"
+   */
+  implicit def unwrapOps[X <: Route](ops:Ops[X]):X = ops.__underlying
+
+  trait Ops[X <: Route]{
+    val __underlying:X
   }
 
-  class Ops[X, A : ToBson](val underlying:X, route:Vector[String]){
+  class FieldOps[X <: Route, A : ToBson](val __underlying:X) extends Ops[X]{
+    private def route = __underlying.__route
     private def operator[O : ToBson](op:String, value:O) = (route :+ op, ToBson(value))
 
     def === (value:A)                                     = (route, ToBson(value))
@@ -66,10 +72,10 @@ trait Stomatepia extends StomatepiaBson {
     def $nearSphere(x:Int, y:Int)(implicit ev: A =:= (Int, Int)) = operator("$nearSphere", (x, y))
     def $centerSphere(point:(Int, Int), radius:Int)(implicit ev: A =:= (Int, Int)) = operator("$centerSphere", (point, radius))
     def $maxDistance(maxDistance:Int)(implicit ev: A =:= (Int, Int)) = operator("$maxDistance", maxDistance)
-    def $within(within:(Within => (Vector[String], Bson))*)(implicit ev: A =:= (Int, Int)) =
-      (route :+ "$within", Bson.document(within.map(w => Fields.path(route :+ "$within", w(new Within)))))
+    def $within(within:(Within.type => (Vector[String], Bson))*)(implicit ev: A =:= (Int, Int)) =
+      (route :+ "$within", Bson.document(within.map(w => Fields.path(route :+ "$within", w(Within)))))
 
-    class Within {
+    object Within {
       private val within = route :+ "$within"
       def $box(bottomLeft:(Int, Int), topRight:(Int, Int)) = (within :+ "$box", ToBson((bottomLeft, topRight)))
       def $box(a:(Int, Int), b:(Int, Int), c:(Int, Int), d:(Int, Int)) = (within :+ "$box", ToBson((a, b, c, d)))
@@ -81,25 +87,65 @@ trait Stomatepia extends StomatepiaBson {
     //update
     def $each(values:Seq[A]) = operator("$each", values)
 
-    //find subset
-    def $slice(slice:Int) = operator("$slice", slice)
-    def $slice(skip:Int, limit:Int) = operator("$slice", (skip, limit))
+    //find keys
+    def $slice(slice:Int)(implicit ev:X <:< IsArray) = operator("$slice", slice)
+    def $slice(skip:Int, limit:Int)(implicit ev:X <:< IsArray) = operator("$slice", (skip, limit))
   }
 
   object ApplyOps {
-    implicit def next[A](a:ApplyOps[A]) = a.next
-    implicit def toBson[A](a:ApplyOps[A]) = (a.route, ToBson(a.value))
+    implicit def toBson[A <: Route](a:ApplyOps[A]) = (a.__route, ToBson(a.value))
   }
 
-  class ApplyOps[X](val next:X, val route:Vector[String], val value:Int)
+  class ApplyOps[X <: Route](val __underlying:X, val __route:Vector[String], val value:Int) extends Ops[X]
+
+  class QueryOps[X <: Route](val __underlying:X) extends Ops[X]{
+    private type ARG = QueryOps[X] => (Vector[String], Bson)
+    private val __route = __underlying.__route
+
+    // query
+    def $or(or:ARG*) =
+      Fields.bsonArray[X, this.type]("$or", this, or)
+    def $nor(nor:ARG*) =
+      Fields.bsonArray[X, this.type]("$nor", this, nor)
+    def $and(and:ARG*) =
+      Fields.bsonArray[X, this.type]("$and", this, and)
+    def $where(where:String) =
+      (__route :+ "$where", ToBson(where))
+  }
+
+  class UpdateOps[X <: Route](val __underlying:X) extends Ops[X] {
+    private type ARG = UpdateOps[X] => (Vector[String], Bson)
+    private val __route = __underlying.__route
+
+    // update
+    def $set(set:ARG*) =
+      Fields.bsonDocument[X, this.type]("$set", this, set)
+    def $unset(unset:ARG*) =
+      Fields.bsonDocument[X, this.type]("$unset", this, unset)
+    def $inc(inc:ARG*) =
+      Fields.bsonDocument[X, this.type]("$inc", this, inc)
+    def $rename(rename:(X => Fields#Field[_], X => Fields#Field[_])*) =
+      (__route :+ "$rename", Bson.document(rename.map{ case (from, to) => Fields.name(from(this)) -> ToBson(Fields.name(to(this))) }))
+    def $push(push:ARG*) =
+      Fields.bsonDocument[X, this.type]("$push", this, push)
+    def $pushAll(pushAll:ARG*) =
+      Fields.bsonDocument[X, this.type]("$pushAll", this, pushAll)
+    def $addToSet(addToSet:ARG*) =
+      Fields.bsonDocument[X, this.type]("$addToSet", this, addToSet)
+    def $pop(pop:ARG*) =
+      Fields.bsonDocument[X, this.type]("$pop", this, pop)
+    def $pull(pull:ARG*) =
+      Fields.bsonDocument[X, this.type]("$pull", this, pull)
+    def $pullAll(pullAll:ARG*) =
+      Fields.bsonDocument[X, this.type]("$pullAll", this, pullAll)
+  }
+
 
   trait Route {
     def __route:Vector[String]
   }
 
   trait Fields extends Route { self =>
-
-    private type ARG = self.type => (Vector[String], Bson)
 
     def bson[A : ToBson](name:String) = new Primitive[A](name)
 
@@ -111,48 +157,16 @@ trait Stomatepia extends StomatepiaBson {
     def geolocation(name:String) = bson[(Int, Int)](name)
     def date(name:String)        = bson[java.util.Date](name)
 
-    // query
-    def $or(or:ARG*) =
-      Fields.bsonArray[self.type]("$or", self, or)
-    def $nor(nor:ARG*) =
-      Fields.bsonArray[self.type]("$nor", self, nor)
-    def $and(and:ARG*) =
-      Fields.bsonArray[self.type]("$and", self, and)
-    def $where(where:String) =
-      (__route :+ "$where", ToBson(where))
-
-    // update
-    def $set(set:ARG*) =
-      Fields.bsonDocument[self.type]("$set", self, set)
-    def $unset(unset:ARG*) =
-      Fields.bsonDocument[self.type]("$unset", self, unset)
-    def $inc(inc:ARG*) =
-      Fields.bsonDocument[self.type]("$inc", self, inc)
-    def $rename(rename:(self.type => Fields#Field[_], self.type => Fields#Field[_])*) =
-      (__route :+ "$rename", Bson.document(rename.map{ case (from, to) => Fields.name(from(this)) -> ToBson(Fields.name(to(this))) }))
-    def $push(push:ARG*) =
-      Fields.bsonDocument[self.type]("$push", self, push)
-    def $pushAll(pushAll:(self.type => (Vector[String], Bson))*) =
-      Fields.bsonDocument[self.type]("$pushAll", self, pushAll)
-    def $addToSet(addToSet:ARG*) =
-      Fields.bsonDocument[self.type]("$addToSet", self, addToSet)
-    def $pop(pop:ARG*) =
-      Fields.bsonDocument[self.type]("$pop", self, pop)
-    def $pull(pull:ARG*) =
-      Fields.bsonDocument[self.type]("$pull", self, pull)
-    def $pullAll(pullAll:ARG*) =
-      Fields.bsonDocument[self.type]("$pullAll", self, pullAll)
-
     class Primitive[A] (parent:Vector[String], name:String)(implicit toBson:ToBson[A]) extends Field[Primitive[A]](parent, name){ primitive =>
       def this(name:String)(implicit toBson:ToBson[A]) = this(__route, name)
 
       protected def next(name:String) = new Primitive[A](name)
-      private val ops                 = new Ops[this.type, A](this, __route)
+      private val ops                 = new FieldOps[this.type, A](this)
 
       def apply(value:A)                                                = (__route, ToBson(value))
       def apply(value:Seq[A])(implicit ev:this.type <:< IsArray)        = (__route, Bson.array(value.map(ToBson(_))))
       def apply(regex:String, options:String)(implicit ev:A =:= String) = (__route, Bson.regex(regex, options))
-      def apply(sub:(Ops[this.type, A] => (Vector[String], Bson))*) =
+      def apply(sub:(FieldOps[this.type, A] => (Vector[String], Bson))*) =
         (__route, Bson.document(sub.map(f => Fields.path(__route, f(ops)))))
 
       def $(value:A)(implicit ev:this.type <:< IsArray) = super.$.apply(value)
@@ -164,6 +178,13 @@ trait Stomatepia extends StomatepiaBson {
 
       def apply(sub:(this.type => (Vector[String], Bson))*) =
         (__route, Bson.document(sub.map(f => Fields.path(__route, f(this)))))
+
+      def $elemMatch(elemMatch:(this.type => (Vector[String], Bson))*)(implicit ev:this.type <:< IsArray) =
+        (__route :+ "$elemMatch", Bson.document(elemMatch.map(f => Fields.path(__route, f(this)))))
+
+      // TODO - Ops ?
+      def $slice(slice:Int)(implicit ev:this.type <:< IsArray) = (__route :+ "$slice", ToBson(slice))
+      def $slice(skip:Int, limit:Int)(implicit ev:this.type <:< IsArray) = (__route :+ "$slice", ToBson((skip, limit)))
     }
 
     sealed abstract class Field[A <: Field[A]](parent:Vector[String], name:String) extends Route {
@@ -172,42 +193,6 @@ trait Stomatepia extends StomatepiaBson {
 
       def $(implicit ev:this.type <:< IsArray) = next(name + ".$")
       def apply(index:Int) = new ApplyOps[A](next(name + "." + index), __route, index)
-
-      def $elemMatch(elemMatch:(this.type => (Vector[String], Bson))*)(implicit ev:this.type <:< IsArray) =
-        Fields.bsonDocument[this.type]("$elemMatch", this, elemMatch)
-
-      // TODO - Ops
-      def $slice(slice:Int) = (__route :+ "$slice", ToBson(slice))
-      def $slice(skip:Int, limit:Int) = (__route :+ "$slice", ToBson((skip, limit)))
-    }
-  }
-
-  trait Collections { self: Schema =>
-    case class Collection(name:String) {
-
-      def find(fields:(self.type => (Vector[String], Bson))*) =
-        Find[self.type](self, name, Bson.document(fields.map(f => Fields.path(f(self)))))
-
-      def find(js:String) =
-        FindJs[self.type](self, name, Bson.string(js))
-
-      def findOne(fields:(self.type => (Vector[String], Bson))*) =
-        FindOne(name, Bson.document(fields.map(f => Fields.path(f(self)))))
-
-      def insert(a:(self.type => (Vector[String], Bson))*){}
-
-      def update(q:(self.type => (Vector[String], Bson))*)(u:(self.type => (Vector[String], Bson))*) =
-        Update(name, Bson.document(q.map(f => Fields.path(f(self)))), Bson.document(u.map(f => Fields.path(f(self)))))
-
-      def remove{ sys.error("remove") }
-
-      def ensureIndex(on:(self.type => (Vector[String], Bson))*) =
-        EnsureIndex(name, Bson.document(on.map(f => Fields.path(f(self)))))
-
-      def reIndex(){ sys.error("reIndex") }
-
-      def save(value:(self.type => (Vector[String], Bson))*) =
-        Save(name, Bson.document(value.map(f => Fields.path(f(self)))))
     }
   }
 
@@ -215,31 +200,75 @@ trait Stomatepia extends StomatepiaBson {
 
   def array[X](value:X) = Fields.array(value)
 
-  trait Schema extends Fields with Collections {
+  trait Schema extends Fields { self =>
     def __route = Vector.empty[String]
+
+    case class Collection(name:String) {
+
+      private type Q    = QueryOps[self.type] => DocField
+      private val  Q    = new QueryOps[self.type](self)
+      private type U    = UpdateOps[self.type] => DocField
+      private val  U    = new UpdateOps[self.type](self)
+      private type Self = self.type => DocField
+
+      def find(fields:Q*) = Find[self.type](self, name, Document(Q, fields))
+
+      def find(js:String) = FindJs[self.type](self, name, Bson.string(js))
+
+      def findOne(fields:Q*) = FindOne(name, Document(Q, fields))
+
+      def insert(i:Self*) = Insert(name, Document[self.type](self, i))
+
+      def insertAll(all:Seq[Self]*) = InsertAll(name, all.map(fields => Document[self.type](self, fields)))
+
+      def update(q:Q*)(u:U*) = Update(name, Document(Q, q), Document(U, u))
+
+      def remove{ sys.error("remove") }
+
+      def ensureIndex(on:Self*) = EnsureIndex(name, Document[self.type](self, on))
+
+      def reIndex(){ sys.error("reIndex") }
+
+      def save(fields:Self*) = Save(name, Document[self.type](self, fields))
+    }
+
+    private type DocField = (Vector[String], Bson)
+
+    private def Document[O](me:O, fields:Seq[O => DocField]) =
+      Bson.document(fields.map(f => Fields.path(f(me))))
   }
 
-  trait Finder[A <: Fields] {
-    def from:A
-    def sort(by:(A => (Vector[String], Bson))*){}
-  }
-
-  case class Find[A <: Schema](from:A, collection:String, query:BsonDocument) extends Finder[A] {
+  // model this as traits with Optional values + phantom types to track usage/state
+  case class Find[A <: Schema](from:A, collection:String, query:BsonDocument) {
     override def toString = "db."+collection+".find("+ query +")"
 
-    def apply(fields:(A => (Vector[String], Bson))*) = FindSubset[A](collection, query, Bson.document(fields.map(f => Fields.path(f(from)))))
+    def sort(by:(A => (Vector[String], Bson))*) = FindSorted[A](from, collection, query, Bson.document(by.map(f => Fields.path(f(from)))))
+
+    def apply(fields:(A => (Vector[String], Bson))*) = FindKeys[A](collection, query, Bson.document(fields.map(f => Fields.path(f(from)))))
   }
 
-  case class FindJs[A <: Schema](from:A, collection:String, query:BsonString) extends Finder[A] {
+  case class FindJs[A <: Schema](from:A, collection:String, query:BsonString) {
     override def toString = "db."+collection+".find("+query+")"
   }
 
-  case class FindSubset[A <: Fields](collection:String, query:BsonDocument, subset:BsonDocument){
-    override def toString = "db."+collection+".find("+query+", "+subset+")"
+  case class FindSorted[A <: Schema](from:A, collection:String, query:BsonDocument, sorted:BsonDocument){
+    override def toString = "db."+collection+".find("+query+").sort("+sorted+")"
+  }
+
+  case class FindKeys[A <: Schema](collection:String, query:BsonDocument, keys:BsonDocument){
+    override def toString = "db."+collection+".find("+query+", "+keys+")"
   }
 
   case class FindOne(collection:String, query:BsonDocument){
     override def toString = "db."+collection+".findOne("+query+")"
+  }
+
+  case class Insert(collection:String, document:BsonDocument){
+    override def toString = "db."+collection+".insert("+document+")"
+  }
+
+  case class InsertAll(collection:String, documents:Seq[BsonDocument]){
+    override def toString = "db."+collection+".insert("+documents.mkString("[ ",", ", " ]")+")"
   }
 
   case class Update(collection:String, query:BsonDocument, update:BsonDocument){

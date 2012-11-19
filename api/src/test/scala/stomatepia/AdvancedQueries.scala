@@ -76,7 +76,7 @@ class AdvancedQueries extends StomatepiaSuite {
     db.things.find(_.colors(_.$ne("red")))       is """db.things.find({ "colors" : { "$ne" : 'red' } })"""
 //  }
 
-  // TODO retrieving a subset of fields
+  // TODO retrieving a keys of fields
 
 //  test("<,<=,>,>="){
     val value = 1
