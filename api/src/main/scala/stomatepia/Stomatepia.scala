@@ -211,7 +211,7 @@ trait Stomatepia extends StomatepiaBson {
       private val  U    = new UpdateOps[self.type](self)
       private type Self = self.type => DocField
 
-      def find(fields:Q*) = Find[self.type](self, name, Document(Q, fields))
+      def find(fields:Q*) = Find[self.type, Bool#F, Bool#F, Bool#F, Bool#F, Bool#F](self, name, Document(Q, fields), None, None, None, None, false)
 
       def find(js:String) = FindJs[self.type](self, name, Bson.string(js))
 
@@ -238,25 +238,39 @@ trait Stomatepia extends StomatepiaBson {
       Bson.document(fields.map(f => Fields.path(f(me))))
   }
 
+  sealed trait Bool {
+    sealed trait T extends Bool
+    sealed trait F extends Bool
+  }
+
   // model this as traits with Optional values + phantom types to track usage/state
-  case class Find[A <: Schema](from:A, collection:String, query:BsonDocument) {
-    override def toString = "db."+collection+".find("+ query +")"
+  case class Find[A <: Schema, KEYS <: Bool, SORTED <: Bool, LIMIT <: Bool, SKIP <: Bool, SNAPSHOT <: Bool](from:A, collection:String, query:BsonDocument, keys:Option[BsonDocument], sorted:Option[BsonDocument], limits:Option[Int], skips:Option[Int], snapshots:Boolean) {
+    override def toString = "db."+collection+".find("+ query + keys.map(", " +).getOrElse("") +")" + sorted.map(s => ".sort("+s+")").getOrElse("")
 
-    def sort(by:(A => (Vector[String], Bson))*) = FindSorted[A](from, collection, query, Bson.document(by.map(f => Fields.path(f(from)))))
+    def count = Count(this)
 
-    def apply(fields:(A => (Vector[String], Bson))*) = FindKeys[A](collection, query, Bson.document(fields.map(f => Fields.path(f(from)))))
+    def limit(value:Int)(implicit ev:LIMIT =:= Bool#F) =
+      Find[A, KEYS, SORTED, Bool#T, SKIP, SNAPSHOT](from, collection, query, keys, sorted, Some(value), skips, snapshots)
+    def skip(value:Int)(implicit ev:SKIP =:= Bool#F) =
+      Find[A, KEYS, SORTED, LIMIT, Bool#T, SNAPSHOT](from, collection, query, keys, sorted, limits, Some(value), snapshots)
+    // may not be used with sorting or explicit hints
+    def snapshot(implicit ev:SNAPSHOT =:= Bool#F, ev1:SORTED =:= Bool#F) =
+      Find[A, KEYS, SORTED, LIMIT, SKIP, Bool#T](from, collection, query, keys, sorted, limits, skips, true)
+//    def batchSize()
+
+    def sort(by:(A => (Vector[String], Bson))*)(implicit ev: SORTED =:= Bool#F) =
+      Find[A, KEYS, Bool#T, LIMIT, SKIP, SNAPSHOT](from, collection, query, keys, Some(Bson.document(by.map(f => Fields.path(f(from))))), limits, skips, snapshots)
+
+    def apply(fields:(A => (Vector[String], Bson))*)(implicit ev:KEYS =:= Bool#F) =
+      Find[A, Bool#T, SORTED, LIMIT, SKIP, SNAPSHOT](from, collection, query, Some(Bson.document(fields.map(f => Fields.path(f(from))))), sorted, limits, skips, snapshots)
+  }
+
+  case class Count(find:Find[_ <: Schema, _ <: Bool, _ <: Bool, _ <: Bool, _ <: Bool, _ <: Bool]){
+    override def toString = find.toString+".count()"
   }
 
   case class FindJs[A <: Schema](from:A, collection:String, query:BsonString) {
     override def toString = "db."+collection+".find("+query+")"
-  }
-
-  case class FindSorted[A <: Schema](from:A, collection:String, query:BsonDocument, sorted:BsonDocument){
-    override def toString = "db."+collection+".find("+query+").sort("+sorted+")"
-  }
-
-  case class FindKeys[A <: Schema](collection:String, query:BsonDocument, keys:BsonDocument){
-    override def toString = "db."+collection+".find("+query+", "+keys+")"
   }
 
   case class FindOne(collection:String, query:BsonDocument){

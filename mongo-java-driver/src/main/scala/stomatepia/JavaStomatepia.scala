@@ -26,30 +26,28 @@ trait JavaStomatepia extends Stomatepia with JavaBson {
 
   class StomatepiaDb(db:DB) {
 
-    def cursor(find:Find[_]) = {
+    def cursor(find:Find[_, _, _, _, _, _]) = {
       val collection = db.getCollection(find.collection)
-      collection.find(find.query)
-    }
-
-    def cursor(find:FindKeys[_]) = {
-      db.getCollection(find.collection).find(find.query, find.keys)
+      val c = collection.find(find.query, find.keys.orNull)
+      find.sorted.foreach(c.sort)
+      find.limits.foreach(c.limit)
+      find.skips.foreach(c.skip)
+      if(find.snapshots)
+        c.snapshot()
+      c
     }
 
     def apply[A](f:this.type => A) = f(this)
   }
 
-  class ExecuteFind(db:StomatepiaDb, find:Find[_]) extends Traversable[DBObject]{
+  class ExecuteFind(db:StomatepiaDb, find:Find[_, _, _, _, _, _]) extends Traversable[DBObject]{
     def foreach[U](f: (DBObject) => U) {
       StomatepiaDb.foreach(f, db.cursor(find))
     }
   }
 
-  class ExecuteFindKeys(db:StomatepiaDb, find:FindKeys[_]) extends Traversable[DBObject]{
-    def foreach[U](f: (DBObject) => U) {
-      StomatepiaDb.foreach(f, db.cursor(find))
-    }
-  }
-
-  implicit def executeFind(find:Find[_])(implicit db:StomatepiaDb) = new ExecuteFind(db, find)
-  implicit def executeFindKeys(findKeys:FindKeys[_])(implicit db:StomatepiaDb) = new ExecuteFindKeys(db, findKeys)
+  implicit def executeFind(find:Find[_, _, _, _, _, _])(implicit db:StomatepiaDb) =
+    new ExecuteFind(db, find)
+  implicit def executeCount(count:Count)(implicit db:StomatepiaDb) =
+    db.cursor(count.find).count()
 }
