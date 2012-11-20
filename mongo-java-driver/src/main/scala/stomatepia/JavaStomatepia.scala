@@ -1,6 +1,6 @@
 package stomatepia
 
-import com.mongodb.{DBCursor, DBObject, DB}
+import com.mongodb.{Mongo, DBCursor, DBObject, DB}
 import collection.generic.CanBuildFrom
 
 object JavaStomatepia extends JavaStomatepia
@@ -26,34 +26,30 @@ trait JavaStomatepia extends Stomatepia with JavaBson {
 
   class StomatepiaDb(db:DB) {
 
-    def cursor[A <: Schema](find:Find[A]) = {
+    def cursor(find:Find[_]) = {
       val collection = db.getCollection(find.collection)
       collection.find(find.query)
     }
 
-    def cursor[A <: Schema](find:FindKeys[A]) = {
+    def cursor(find:FindKeys[_]) = {
       db.getCollection(find.collection).find(find.query, find.keys)
     }
 
     def apply[A](f:this.type => A) = f(this)
   }
 
-  class ExecuteFind[A <: Schema](find:Find[A]){
-    def to[C[_]](implicit db:StomatepiaDb, can:CanBuildFrom[Nothing, DBObject, C[DBObject]]) =
-      StomatepiaDb.to[C](db.cursor(find))
-    def foreach(f:DBObject => Any)(implicit db:StomatepiaDb){
+  class ExecuteFind(db:StomatepiaDb, find:Find[_]) extends Traversable[DBObject]{
+    def foreach[U](f: (DBObject) => U) {
       StomatepiaDb.foreach(f, db.cursor(find))
     }
   }
 
-  class ExecuteFindKeys[A <: Schema](findKeys:FindKeys[A]){
-    def to[C[_]](implicit db:StomatepiaDb, can:CanBuildFrom[Nothing, DBObject, C[DBObject]]) =
-      StomatepiaDb.to[C](db.cursor(findKeys))
-    def foreach(f:DBObject => Any)(implicit db:StomatepiaDb){
-      StomatepiaDb.foreach(f, db.cursor(findKeys))
+  class ExecuteFindKeys(db:StomatepiaDb, find:FindKeys[_]) extends Traversable[DBObject]{
+    def foreach[U](f: (DBObject) => U) {
+      StomatepiaDb.foreach(f, db.cursor(find))
     }
   }
 
-  implicit def executeFind[A <: Schema](find:Find[A]) = new ExecuteFind[A](find)
-  implicit def executeFindKeys[A <: Schema](findKeys:FindKeys[A]) = new ExecuteFindKeys[A](findKeys)
+  implicit def executeFind(find:Find[_])(implicit db:StomatepiaDb) = new ExecuteFind(db, find)
+  implicit def executeFindKeys(findKeys:FindKeys[_])(implicit db:StomatepiaDb) = new ExecuteFindKeys(db, findKeys)
 }
