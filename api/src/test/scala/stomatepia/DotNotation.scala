@@ -2,47 +2,46 @@ package stomatepia
 
 class DotNotation extends StomatepiaSuite {
 
-  object Foo extends Schema {
-    case class Foo(name:String) extends Embedded[Foo](name){
-      val shape = string("shape")
-      val color = string("color")
-      val thick = boolean("thick")
-    }
-    val foo = array(Foo("foo"))
-  }
-
-  object Person extends Schema {
-    val name = string("name")
-    val address = Address("address")
-    val likes = array(string("likes"))
-
-    case class Address(name:String) extends Embedded[Address](name){
-      val city = string("city")
-      val state = string("state")
-    }
-  }
-
-  object Blogpost extends Schema {
-    val title = string("title")
-    val author = Author("author")
-    val comments = array(Comments("comments"))
-
-    case class Author(_name:String) extends Embedded[Author](_name){
-      val id = int("id")
-      val name = string("name")
-    }
-
-    case class Comments(name:String) extends Embedded[Comments](name){
-      val by = string("by")
-      val text = string("text")
-    }
-  }
-
   object db {
-    val foo = Foo.Collection("foo")
-    val persons = Person.Collection("persons")
-    val blogposts = Blogpost.Collection("blogposts")
-    val blog = Blogpost.Collection("blog")
+
+    object foo extends Schema("foo") {
+      case class Foo(name:String) extends Embedded[Foo](name){
+        val shape = string("shape")
+        val color = string("color")
+        val thick = boolean("thick")
+      }
+      val foo = array(Foo("foo"))
+    }
+
+    object persons extends Schema("persons") {
+      val name = string("name")
+      val address = Address("address")
+      val likes = array(string("likes"))
+
+      case class Address(name:String) extends Embedded[Address](name){
+        val city = string("city")
+        val state = string("state")
+      }
+    }
+
+    class Blog(name:String) extends Schema(name) {
+      val title = string("title")
+      val author = Author("author")
+      val comments = array(Comments("comments"))
+
+      case class Author(_name:String) extends Embedded[Author](_name){
+        val id = int("id")
+        val name = string("name")
+      }
+
+      case class Comments(name:String) extends Embedded[Comments](name){
+        val by = string("by")
+        val text = string("text")
+      }
+    }
+
+    object blog extends Blog("blog")
+    object blogposts extends Blog("blogposts")
   }
 
 //  test("intro"){

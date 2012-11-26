@@ -6,7 +6,10 @@ import java.util.Date
 trait StomatepiaSuite extends Stomatepia with ToStringBson with FunSuite {
 
   class StringIs(what:String){
-    def is(s:String) = test(s){ assert(what === s)}
+    def is(s:String) = test(s){
+      assert(what === s)
+    }
+
     def isd(s:String) = test(s){
       println(s)
       println(what)

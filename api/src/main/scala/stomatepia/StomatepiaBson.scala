@@ -10,24 +10,24 @@ trait StomatepiaBson {
 
   trait BsonProvider {
 
-    def double(value:Double):Bson                  //1
-    def string(value:String):BsonString                  //2
+    def double(value:Double):Bson                          //1
+    def string(value:String):BsonString                    //2
     def document(fields:Seq[(String, Bson)]):BsonDocument  //3
-    def array(elements:Seq[Bson]):BsonArray             //4
-    def binary(data:Array[Byte]):Bson              //5
-    def objectId(id:String):Bson                   //7
-    def boolean(value:Boolean):Bson                //8
-    def date(value:java.util.Date):Bson            //9
-    def NULL:Bson                                  //10
-    def regex(value:String, options:String):Bson   //11
-    def javascript(value:String):Bson              //13
-    def symbol(value:Symbol):Bson                  //14
+    def array(elements:Seq[Bson]):BsonArray                //4
+    def binary(data:Array[Byte]):Bson                      //5
+    def objectId(id:String):Bson                           //7
+    def boolean(value:Boolean):Bson                        //8
+    def date(value:java.util.Date):Bson                    //9
+    def NULL:Bson                                          //10
+    def regex(value:String, options:String):Bson           //11
+    def javascript(value:String):Bson                      //13
+    def symbol(value:Symbol):Bson                          //14
     def jsWithScope(value:String, scope:BsonDocument):Bson //15
-    def int(value:Int):Bson                        //16
-    def timestamp(time:Int, inc:Int):Bson          //17
-    def long(value:Long):Bson                      //18
-    def minKey:Bson                                //255
-    def maxKey:Bson                                //127
+    def int(value:Int):Bson                                //16
+    def timestamp(time:Int, inc:Int):Bson                  //17
+    def long(value:Long):Bson                              //18
+    def minKey:Bson                                        //255
+    def maxKey:Bson                                        //127
   }
 
   trait ToBson[A]{

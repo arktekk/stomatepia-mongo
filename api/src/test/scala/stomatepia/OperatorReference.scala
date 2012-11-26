@@ -2,94 +2,88 @@ package stomatepia
 
 class OperatorReference extends StomatepiaSuite { self =>
 
-  object Inventory extends Schema {
-    val qty     = int("qty")
-    val carrier = Carrier("carrier")
-    val price   = double("price")
-    val tags    = array(string("tags"))
-    val sale    = boolean("sale")
-    val item    = string("item")
-
-    case class Carrier(name:String) extends Embedded[Carrier](name){
-      val state = string("state")
-      val fee   = int("fee")
-    }
-  }
-
-  object Collection extends Schema {
-    val field    = self.array(string("field"))
-    val field1   = self.array(string("field1"))
-    val location = geolocation("location")
-    val loc      = geolocation("loc")
-    val array    = self.array(Fields("array"))
-    val age      = int("age")
-    val name     = string("name")
-
-    case class Fields(name:String) extends Embedded[Fields](name){
-      val value1 = int("value1")
-      val value2 = int("value2")
-    }
-  }
-
-  object Addressbook extends Schema {
-    val addresses = Addresses("addresses")
-    val address   = Addresses("address")
-
-    case class Addresses(name:String) extends Embedded[Addresses](name){
-      val loc = geolocation("loc")
-    }
-  }
-
-  object Student extends Schema {
-    val _id      = int("_id")
-    val nickname = string("nickname")
-    val alias    = string("alias")
-    val cell     = string("cell")
-    val mobile   = string("mobile")
-    val nmae     = string("nmae")
-    val name     = string("name")
-    val wife     = string("wife")
-    val spouse   = string("spouse")
-    val vice     = string("vice")
-    val vp       = string("vp")
-    val office   = string("office")
-    val term     = string("term")
-    val grades   = array(int("grades"))
-  }
-
-  object Student2 extends Schema {
-    val _id = int("_id")
-    val name = Name("name")
-    val contact = Contact("contact")
-    val grades = array(Grade("grades"))
-
-    case class Name(name:String) extends Embedded[Name](name){
-      val first = string("first")
-      val fname = string("fname")
-      val last  = string("last")
-    }
-
-    case class Contact(name:String) extends Embedded[Contact](name){
-      val lname = string("lname")
-    }
-
-    case class Grade(name:String) extends Embedded[Grade](name){
-      val grade = int("grade")
-      val std   = int("std")
-    }
-  }
-
-  object Post extends Schema {
-    val comments = array(string("comments"))
-  }
-
   object db {
-    val inventory   = Inventory.Collection("inventory")
-    val collection  = Collection.Collection("collection")
-    val addressBook = Addressbook.Collection("addressBook")
-    val students    = Student.Collection("students")
-    val students2   = Student2.Collection("students")
-    val posts       = Post.Collection("posts")
+
+    object inventory extends Schema("inventory") {
+      val qty     = int("qty")
+      val carrier = Carrier("carrier")
+      val price   = double("price")
+      val tags    = array(string("tags"))
+      val sale    = boolean("sale")
+      val item    = string("item")
+
+      case class Carrier(name:String) extends Embedded[Carrier](name){
+        val state = string("state")
+        val fee   = int("fee")
+      }
+    }
+
+    object collection extends Schema("collection") {
+      val field    = self.array(string("field"))
+      val field1   = self.array(string("field1"))
+      val location = geolocation("location")
+      val loc      = geolocation("loc")
+      val array    = self.array(Fields("array"))
+      val age      = int("age")
+      val name     = string("name")
+
+      case class Fields(name:String) extends Embedded[Fields](name){
+        val value1 = int("value1")
+        val value2 = int("value2")
+      }
+    }
+
+    object addressBook extends Schema("addressBook") {
+      val addresses = Addresses("addresses")
+      val address   = Addresses("address")
+
+      case class Addresses(name:String) extends Embedded[Addresses](name){
+        val loc = geolocation("loc")
+      }
+    }
+
+    object students extends Schema("students") {
+      val _id      = int("_id")
+      val nickname = string("nickname")
+      val alias    = string("alias")
+      val cell     = string("cell")
+      val mobile   = string("mobile")
+      val nmae     = string("nmae")
+      val name     = string("name")
+      val wife     = string("wife")
+      val spouse   = string("spouse")
+      val vice     = string("vice")
+      val vp       = string("vp")
+      val office   = string("office")
+      val term     = string("term")
+      val grades   = array(int("grades"))
+    }
+
+    object students2 extends Schema("students") {
+      val _id = int("_id")
+      val name = Name("name")
+      val contact = Contact("contact")
+      val grades = array(Grade("grades"))
+
+      case class Name(name:String) extends Embedded[Name](name){
+        val first = string("first")
+        val fname = string("fname")
+        val last  = string("last")
+      }
+
+      case class Contact(name:String) extends Embedded[Contact](name){
+        val lname = string("lname")
+      }
+
+      case class Grade(name:String) extends Embedded[Grade](name){
+        val grade = int("grade")
+        val std   = int("std")
+      }
+    }
+
+    object posts extends Schema("posts") {
+      val comments = array(string("comments"))
+    }
   }
 
   db.inventory.find(_.qty(_.$ne(20))) is """db.inventory.find({ "qty" : { "$ne" : 20 } })"""

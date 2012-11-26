@@ -2,67 +2,57 @@ package stomatepia
 
 class AdvancedQueries extends StomatepiaSuite {
 
-  object Thing extends Schema {
-    val x = int("x")
-    val y = string("y")
-    val j = int("j")
-    val k = int("k")
-    val a = array(int("a"))
-    val colors = array(string("colors"))
-  }
-
-  object Collection extends Schema {
-    val field = int("field")
-  }
-
-  object Foo extends Schema {
-    val a = array(int("a"))
-    val b = int("b")
-    val name = string("name")
-  }
-
-  object Customer extends Schema {
-    val name = string("name")
-  }
-
-  object X extends Schema {
-    val someId = string("someId")
-  }
-
-  object T extends Schema {
-    val x = array(X("x"))
-    val x2 = array(int("x"))
-
-    case class X(name:String) extends Embedded[X](name){
-      val a = int("a")
-      val b = int("b")
+  object db {
+    object things extends Schema("things") {
+      val x = int("x")
+      val y = string("y")
+      val j = int("j")
+      val k = int("k")
+      val a = array(int("a"))
+      val colors = array(string("colors"))
     }
-  }
 
-  object Posting extends Schema {
-    val author = Author("author")
+    object collection extends Schema("collection") {
+      val field = int("field")
+    }
 
-    case class Author(_name:String) extends Embedded[Author](_name){
+    object foo extends Schema("foo") {
+      val a = array(int("a"))
+      val b = int("b")
       val name = string("name")
     }
-  }
 
-  object MyCollection extends Schema {
-    val a = int("a")
-    val registered = boolean("registered")
-  }
+    object customers extends Schema("customers") {
+      val name = string("name")
+    }
 
-  object db {
-    val things = Thing.Collection("things")
-    val collection = Collection.Collection("collection")
-    val foo = Foo.Collection("foo")
-    val customers = Customer.Collection("customers")
-    val x = X.Collection("x")
-    val t = T.Collection("t")
-    val postings = Posting.Collection("postings")
-    val myCollection = MyCollection.Collection("myCollection")
-  }
+    object x extends Schema("x") {
+      val someId = string("someId")
+    }
 
+    object t extends Schema("t") {
+      val x = array(X("x"))
+      val x2 = array(int("x"))
+
+      case class X(name:String) extends Embedded[X](name){
+        val a = int("a")
+        val b = int("b")
+      }
+    }
+
+    object postings extends Schema("postings") {
+      val author = Author("author")
+
+      case class Author(_name:String) extends Embedded[Author](_name){
+        val name = string("name")
+      }
+    }
+
+    object myCollection extends Schema("myCollection") {
+      val a = int("a")
+      val registered = boolean("registered")
+    }
+  }
 
 //  test("intro"){
     db.things.find(_.x(3), _.y("foo")) is """db.things.find({ "x" : 3, "y" : 'foo' })"""
