@@ -5,15 +5,29 @@ import java.util.Date
 
 trait StomatepiaSuite extends Stomatepia with ToStringBson with FunSuite {
 
+  private val names = collection.mutable.Set.empty[String]
+
   class StringIs(what:String){
-    def is(s:String) = test(s){
-      assert(what === s)
+    def is(s:String) = testNamed(s)
+
+    def testNamed(s:String) = {
+      def fresh(i:Int):String = {
+        val n = s+" // "+i
+        if(names(n))
+          fresh(i+1)
+        else n
+      }
+      val name = if(names(s)) fresh(1) else s
+      names += name
+      test(name){
+        assert(what === s)
+      }
     }
 
-    def isd(s:String) = test(s){
+    def isd(s:String){
       println(s)
       println(what)
-      assert(what === s)
+      is(s)
     }
   }
 
